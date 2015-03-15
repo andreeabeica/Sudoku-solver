@@ -1,0 +1,7 @@
+"Rule: ocaml: ml -> cmo & cmi (%=main )": "Bz\193\157\247\028\n,G\0305\207\232}wF"
+"Rule: ocaml: cmo* -> byte (%=main )": "\240\160O\2419R\154\221\018\1295\017\151s.\131"
+"Rule: ocaml: ml -> cmo & cmi (%=Sudoku )": "&_\"5\194\227\188\200N\244\163\234\023@\209\191"
+"Resource: /home/andreea/Bureau/Sudoku-solver/main.ml": "\186\175hV\251\228m\005\002=\154{@(7<"
+"Resource: /home/andreea/Bureau/Sudoku-solver/Sudoku.ml": "[\2400\1858\172\143PL]\026b\162{\143R"
+"Rule: ocaml dependencies ml (%=Sudoku )": "6^I\142~\026\152p\187\179p\179C^e\148"
+"Rule: ocaml dependencies ml (%=main )": "FKFc\192[\018\136\211\017\184\227G\146\163y"

@@ -1,5 +1,6 @@
 all:
-	ocaml Sudoku.ml
+	ocamlbuild main.byte
+	mv main.byte sudoku-solver
 
 clean:
 	rm -f *.cm[iox] *~ .*~ #*#

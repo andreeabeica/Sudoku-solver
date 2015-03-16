@@ -1,5 +1,5 @@
 all:
-	ocamlbuild main.byte
+	ocamlbuild -lib str main.byte
 	mv main.byte sudoku-solver
 
 clean:
@@ -9,3 +9,4 @@ clean:
 	rm -f $(EXEC).opt
 	rm sudoku-solver
 	rm dimacs.txt
+	rm solution.txt

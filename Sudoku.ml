@@ -1,5 +1,6 @@
 open Printf
 open Pervasives
+open Str
 (* formatting the Sudoku grids*)
 
  type cellule = { i : int; j : int };;
@@ -196,21 +197,36 @@ let formatting string_formula =
 	printgrid grid 0 0;
 	printdimacs formula;;
 
-let run_minisat = let code = Sys.command "minisat dimacs.txt solution.txt -no-luby -rinc=1.5 -phase-saving=0 -rnd-freq=0.02" in
-		    if code = -1 
-			then printf "Something went wrong using minisat\n"
-			else printf "Minisat solution output in file solution.txt\n";;
 
 
 (*turn minisat solution into Sudoku grid*)
 
+let filetolist f = try let ic = open_in f in
+		  	let n = in_channel_length ic in
+				let s = String.create n in
+					let _ = really_input ic s 0 n in
+				        let s_list = Str.split (Str.regexp " ") (Str.global_replace (Str.regexp "SAT\n") "" (s)) in
+					(*begin printf "found and opened!\n";*)
+					close_in ic;	
+					(*List.iter (fun s -> printf " %s;" s) s_list;*)
+					s_list (*end*)
+		with Not_found -> printf "What!\n";[];;
+		
+	
 let rec turn2grid solution matrix=
 	match solution with
 	|a1::a2::a3::a4::a5::a6::a7::a8::a9::rest -> let aux =[a1;a2;a3;a4;a5;a6;a7;a8;a9] 
-									in let value= List.find (fun s -> s>0) aux
-									in let i = if (value mod 81 <> 0)then value/81 else (value/81 -1)in let j = if (value - 81*i) mod 9 <> 0 then (value-81*i)/ 9 else ((value-81*i)/9-1) in let d = (value - 81*i - 9*j) in (*printf "%d %d %d \n" i j d;*)matrix.(i).(j) <- d; turn2grid rest matrix
+									in let value= int_of_string (List.find (fun s -> (int_of_string s) > 0) aux)
+									in let i = if (value mod 81 <> 0)then value/81 else (value/81 -1)in let j = if (value - 81*i) mod 9 <> 0 then (value-81*i)/ 9 else ((value-81*i)/9-1) in let d = (value - 81*i - 9*j) in (*List.iter (fun s -> printf "%s;" s) aux; printf "\n %d \n" value;*)matrix.(i).(j) <- d; turn2grid rest matrix
 	|_ -> matrix;;
 
+
+let run_minisat f = let code = Sys.command "minisat dimacs.txt solution.txt -no-luby -rinc=1.5 -phase-saving=0 -rnd-freq=0.02" in
+		    if code = -1 
+			then printf "Something went wrong using minisat\n"
+			else 
+				printf "Minisat solution output in file solution.txt\n";
+				printgrid (turn2grid (filetolist "solution.txt") (Array.make_matrix 9 9 0)) 0 0;;
 
 	
 

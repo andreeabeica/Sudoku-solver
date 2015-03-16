@@ -1,6 +1,6 @@
 ### Starting build.
 # Target: main.ml.depends, tags: { extension:ml, file:main.ml, ocaml, ocamldep, quiet }
-/usr/local/bin/ocamldep.opt -modules main.ml > main.ml.depends
+/usr/local/bin/ocamldep.opt -modules main.ml > main.ml.depends # cached
 # Target: Sudoku.ml.depends, tags: { extension:ml, file:Sudoku.ml, ocaml, ocamldep, quiet }
 /usr/local/bin/ocamldep.opt -modules Sudoku.ml > Sudoku.ml.depends
 # Target: Sudoku.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:Sudoku.cmo, file:Sudoku.ml, implem, ocaml, quiet }
@@ -8,5 +8,5 @@
 # Target: main.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:main.cmo, file:main.ml, implem, ocaml, quiet }
 /usr/local/bin/ocamlc.opt -c -o main.cmo main.ml
 # Target: main.byte, tags: { byte, dont_link_with, extension:byte, file:main.byte, link, ocaml, program, quiet }
-/usr/local/bin/ocamlc.opt Sudoku.cmo main.cmo -o main.byte
+/usr/local/bin/ocamlc.opt str.cma Sudoku.cmo main.cmo -o main.byte
 # Compilation successful.

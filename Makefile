@@ -7,3 +7,5 @@ clean:
 	rm -f *.mli
 	rm -f $(EXEC)
 	rm -f $(EXEC).opt
+	rm sudoku-solver
+	rm dimacs.txt

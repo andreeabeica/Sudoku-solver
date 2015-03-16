@@ -12,4 +12,6 @@ let usage = "usage: sudoku-solver [option] sudokugrid"
 
 let () = 
   Arg.parse options (set_string istring) usage;
-  Sudoku.formatting !istring;;
+  Sudoku.formatting !istring;
+  Sudoku.run_minisat;;
+  

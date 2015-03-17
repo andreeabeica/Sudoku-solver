@@ -9,6 +9,7 @@ module type Solver = sig
    * positive or negative [sign] *)
   type sign (* Exposing this is not necessary *)
   type lit
+  type lits (* literal set *)
   type disj (* Exposing this is not necessary *)
   type form
   type valu
@@ -21,20 +22,20 @@ module type Solver = sig
 
   (* Give a truth-value to the variable contained in the literal,
    * depending on the sign of the literal *)
-  val assign : lit -> valu -> valu
+  val assign : lit -> lits -> valu -> valu
 
   (* Boolean constraints propagation under the assumption that
    * the given literal is true *)
-  val bcp : lit -> form -> form
+  val bcp : lit -> lits -> form -> form
 
   (* Find a clause with exactly one literal *)
   (* A more elegant type would be form -> lit option *)
-  val get_forced_lit : form -> (lit * form) option
+  val get_forced_lit : form -> (lit * lits * form) option
 
   (* Whether the given formula is trivially true (empty)
    * or trivially false (contains an empty disjunction *)
   val trivially_true : form -> bool
-  val trivially_false : form -> bool
+  val trivially_false : form -> lits option
 
   (* Next undefined variable mentioned by the formula *)
   val next_var : valu -> form -> int option
@@ -44,6 +45,12 @@ module type Solver = sig
   val to_form : (int * bool) list list -> form
   val to_lit : int -> bool -> lit
 
+  (* literal sets *)
+  val remove : lit -> lits -> lits
+  val singleton : lit -> lits
+  val union : lits -> lits -> lits
+  val mem : lit -> lits -> bool
+
 end
 
 module S : Solver = struct
@@ -51,35 +58,48 @@ module S : Solver = struct
 
   type sign = bool
   type lit = int * sign
+  module Lits = Set.Make(struct type t = lit let compare = compare end)
+  type lits = Lits.t
   type disj = lit list
-  type form = disj list
-  type valu = bool ValMap.t
+  type form = (disj * lits) list
+  type valu = (bool*lits) ValMap.t
 
   let neg l = (fst l, not (snd l))
   let empty_valuation = ValMap.empty
-  let assign l gamma = ValMap.add (fst l) (snd l) gamma
+  let assign l setA gamma = ValMap.add (fst l) (snd l,setA) gamma
+
+  let union = Lits.union
+  let mem = Lits.mem
+  let singleton = Lits.singleton
+  let remove = Lits.remove
 
   (* Remove all disjunctions containing l *)
   let remove_disj l delta : form = 
-    List.filter (fun disj -> not (List.exists (fun l' -> l = l') disj)) delta
+    List.filter (fun (disj,_) -> not (List.exists (fun l' -> l = l') disj)) delta
 
   (* Remove l everywhere it appears *)
-  let remove_lit l delta : form = 
-    List.map (fun disj -> List.filter (fun l' -> l <> l') disj) delta
+  let remove_lit l setB delta : form = 
+    List.map (fun (disj,setC) -> 
+      match List.partition (fun l' -> l' = l) disj with
+      | [], _ -> (disj,setC)
+      | _, disj' -> (disj', union setB setC)) delta
 
-  let bcp l delta =
-    delta |> remove_disj l |> remove_lit (neg l)
+  let bcp l setB delta =
+    delta |> remove_disj l |> remove_lit (neg l) setB
 
   let get_forced_lit delta =
     let rec aux acc = function
       | [] -> None
-      | [l]::delta' -> Some (l, acc@delta')
+      | ([l],setA)::delta' -> Some (l, setA, acc@delta')
       | disj::delta' -> aux (disj::acc) delta'
     in aux [] delta
 
   let trivially_true = function [] -> true | _ -> false
 
-  let trivially_false = List.exists (function [] -> true | _ -> false)
+  let trivially_false delta = 
+    try
+    Some (snd (List.find (function ([],_) -> true | _ -> false) delta))
+    with Not_found -> None
 
   let next_var gamma delta = 
     let rec aux2 = function
@@ -87,14 +107,14 @@ module S : Solver = struct
       | (n,_)::disj -> if ValMap.mem n gamma then aux2 disj else Some n
     and aux1 = function
       | [] -> None
-      | disj::delta -> 
+      | (disj,_)::delta -> 
         match aux2 disj with
         | Some n -> Some n
         | None -> aux1 delta
     in aux1 delta
 
-  let bindings = ValMap.bindings
-  let to_form list = list
+  let bindings gamma = List.map (fun (n,(b,l)) -> (n,b)) (ValMap.bindings gamma)
+  let to_form list = List.map (fun disj -> (disj,Lits.empty)) list
   let to_lit n b = (n,b)
 end
 
@@ -102,34 +122,44 @@ end
   * 1) Repeatedly propagate constraints (BCP)
   * 2) If some l has to be assumed, assume it and recurse. (ASSUME)
   *    Otherwise, stop *)
-let rec clean gamma l delta =
-  delta |> S.bcp l |> assume (S.assign l gamma)
+let rec clean gamma l setA delta =
+  delta |> S.bcp l setA |> assume (S.assign l setA gamma)
 
 and assume gamma delta =
   match S.get_forced_lit delta with
-  | Some (l, delta') -> clean gamma l delta'
+  | Some (l, setA, delta') -> clean gamma l setA delta'
   | None -> (gamma,delta)
+
 
 (* Main solver
  * - If delta is True, return current valuation
  * - If delta is trivially unsatisfiable, backtrack (CONFLICT)
  * - Otherwise, assume a new literal and recursively solve 
- *   on a cleaned version of the resulting system (UNSAT) *)
+ *   on a cleaned version of the resulting system (UNSAT),
+ *   with early failure if assuming the dual literal would
+ *   never help (BJ) *)
 let rec solve' (gamma,delta) k =
   if S.trivially_true delta then
     Some gamma
 
-  else if S.trivially_false delta then
-    k ()
+  else match S.trivially_false delta with
+  | Some setA -> k setA
+  | None ->
 
-  else match S.next_var gamma delta with
+  match S.next_var gamma delta with
   | None -> print_endline "error: no next var"; None
   | Some n ->
-    let build l = clean gamma l delta in
-    solve' (build (S.to_lit n true)) (fun () -> solve' (build (S.to_lit n false)) k)
+    let lt = S.to_lit n true
+    and lf = S.to_lit n false
+    and build l set = clean gamma l set delta in
+    solve' (build lt (S.singleton lt))
+    (fun setA -> 
+      if S.mem lt setA 
+      then solve' (build lf (S.remove lt setA)) k (* UNSAT *)
+      else k setA (* BJ *))
 
 (* Initiate solving *)
-let solve delta = solve' (S.empty_valuation,delta) (fun () -> None)
+let solve delta = solve' (S.empty_valuation,delta) (fun setA -> None)
 
 (* Print resulting valuation when the formulas is SAT *)
 let print_valu gamma = 

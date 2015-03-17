@@ -1,3 +1,8 @@
+(* TODOs
+ * profiling (hard)
+ * queue lone literals
+ * copy imperative DS on UNSAT choice *)
+
 (* Following Sylvain Conchon's article, we use 
  * [gamma] for valuations
  * [l] for literals
@@ -24,8 +29,8 @@ module type Solver = sig
   val assign : lit -> valu -> valu
 
   (* Boolean constraints propagation under the assumption that
-   * the given literal is true *)
-  val bcp : lit -> form -> form
+   * the given literal is true. BCP + ASSUME *)
+  val clean : valu -> lit -> form -> (valu * form)
 
   (* Find a clause with exactly one literal *)
   (* A more elegant type would be form -> lit option *)
@@ -48,6 +53,7 @@ end
 
 module S : Solver = struct
   module ValMap = Map.Make(struct type t = int let compare a b = a - b end)
+  module CMap = Map.Make(struct type t = int let compare a b = a - b end)
 
   type sign = bool
   type lit = int * sign
@@ -64,11 +70,18 @@ module S : Solver = struct
     List.filter (fun disj -> not (List.exists (fun l' -> l = l') disj)) delta
 
   (* Remove l everywhere it appears *)
-  let remove_lit l delta : form = 
-    List.map (fun disj -> List.filter (fun l' -> l <> l') disj) delta
+  let remove_lit l lits delta : form * (lit list) = 
+    List.fold_left (fun acc disj ->
+      let r = List.filter (fun l' -> l <> l') disj in
+      match r with
+      | [l] -> fst acc, l::(snd acc)
+      | _ -> r::(fst acc), snd acc) ([],lits) delta
 
-  let bcp l delta =
-    delta |> remove_disj l |> remove_lit (neg l)
+    (*List.map (fun disj -> List.filter (fun l' -> l <> l') disj) delta*)
+
+  let bcp l lits delta =
+    let delta' = remove_disj l delta in
+    remove_lit (neg l) lits delta'
 
   let get_forced_lit delta =
     let rec aux acc = function
@@ -76,6 +89,23 @@ module S : Solver = struct
       | [l]::delta' -> Some (l, acc@delta')
       | disj::delta' -> aux (disj::acc) delta'
     in aux [] delta
+
+  (* Clean maximally:
+    * 1) Repeatedly propagate constraints (BCP)
+    * 2) If some l has to be assumed, assume it and recurse. (ASSUME)
+    *    Otherwise, stop *)
+  let rec clean gamma l delta =
+    let rec bla gamma l lits delta = 
+      let delta', lits' = bcp l lits delta 
+      in assume (assign l gamma) delta' lits'
+    (*delta |> S.bcp l |> assume (S.assign l gamma)*)
+
+    and assume gamma delta lits =
+      match lits with
+      | l::ls -> bla gamma l ls delta
+      | [] -> gamma, delta
+
+    in bla gamma l [] delta
 
   let trivially_true = function [] -> true | _ -> false
 
@@ -98,18 +128,6 @@ module S : Solver = struct
   let to_lit n b = (n,b)
 end
 
-(* Clean maximally:
-  * 1) Repeatedly propagate constraints (BCP)
-  * 2) If some l has to be assumed, assume it and recurse. (ASSUME)
-  *    Otherwise, stop *)
-let rec clean gamma l delta =
-  delta |> S.bcp l |> assume (S.assign l gamma)
-
-and assume gamma delta =
-  match S.get_forced_lit delta with
-  | Some (l, delta') -> clean gamma l delta'
-  | None -> (gamma,delta)
-
 (* Main solver
  * - If delta is True, return current valuation
  * - If delta is trivially unsatisfiable, backtrack (CONFLICT)
@@ -125,7 +143,7 @@ let rec solve' (gamma,delta) k =
   else match S.next_var gamma delta with
   | None -> print_endline "error: no next var"; None
   | Some n ->
-    let build l = clean gamma l delta in
+    let build l = S.clean gamma l delta in
     solve' (build (S.to_lit n true)) (fun () -> solve' (build (S.to_lit n false)) k)
 
 (* Initiate solving *)

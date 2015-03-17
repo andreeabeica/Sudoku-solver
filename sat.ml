@@ -13,9 +13,16 @@ module type Solver = sig
   type disj (* Exposing this is not necessary *)
   type form
   type valu
+  type info
 
   (* Negation of a literal *)
   val neg : lit -> lit
+
+  (* Formulas *)
+  val top : form
+  val conj : form -> form -> form
+  val shift : lit -> form -> form
+  val sing_form : lit -> lits -> form
 
   (* What is says on the tin *)
   val empty_valuation : valu
@@ -62,11 +69,16 @@ module S : Solver = struct
   type lits = Lits.t
   type disj = lit list
   type form = (disj * lits) list
+  type info = lits * form
   type valu = (bool*lits) ValMap.t
 
   let neg l = (fst l, not (snd l))
   let empty_valuation = ValMap.empty
   let assign l setA gamma = ValMap.add (fst l) (snd l,setA) gamma
+
+  let top = []
+  let conj d d' = d@d'
+  let sing_form l setA = [([l],setA)]
 
   let union = Lits.union
   let mem = Lits.mem
@@ -100,6 +112,14 @@ module S : Solver = struct
     try
     Some (snd (List.find (function ([],_) -> true | _ -> false) delta))
     with Not_found -> None
+
+  let rec shift l = function
+    | [] -> []
+    | (disj,setA)::delta ->
+        if mem l setA then
+          ((neg l)::disj, remove l setA)::(shift l delta)
+        else
+          (disj,setA)::(shift l delta)
 
   let next_var gamma delta = 
     let rec aux2 = function
@@ -143,7 +163,7 @@ let rec solve' (gamma,delta) k =
     Some gamma
 
   else match S.trivially_false delta with
-  | Some setA -> k setA
+  | Some setA -> k (setA,S.top)
   | None ->
 
   match S.next_var gamma delta with
@@ -151,15 +171,21 @@ let rec solve' (gamma,delta) k =
   | Some n ->
     let lt = S.to_lit n true
     and lf = S.to_lit n false
-    and build l set = clean gamma l set delta in
-    solve' (build lt (S.singleton lt))
-    (fun setA -> 
+    and build l set delta = clean gamma l set delta in
+    solve' (build lt (S.singleton lt) delta)
+    (fun (setA,conflicts) -> 
       if S.mem lt setA 
-      then solve' (build lf (S.remove lt setA)) k (* UNSAT *)
-      else k setA (* BJ *))
+      then solve' (build lf (S.remove lt setA) (S.conj delta (S.shift lt conflicts)) )
+        (fun (setB,conflictsB) -> 
+          let conflictsB' = S.conj 
+                        (S.conj (S.shift lt conflicts) (S.sing_form lf (S.remove lt setA)))
+                        conflictsB
+          in k (setB,conflictsB'))
+      (* UNSAT *)
+      else k (setA, S.shift lt conflicts) (* BJ *))
 
 (* Initiate solving *)
-let solve delta = solve' (S.empty_valuation,delta) (fun setA -> None)
+let solve delta = solve' (S.empty_valuation,delta) (fun info -> None)
 
 (* Print resulting valuation when the formulas is SAT *)
 let print_valu gamma = 

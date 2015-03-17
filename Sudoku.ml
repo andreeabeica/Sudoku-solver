@@ -198,9 +198,12 @@ let printdimacs dfnc =
 	List.iter (fun s -> fprintf out "%s\n" (dimacs_clause s "")) dfnc;
 	close_out out;;
 
-let formatting string_formula =
+let formulate string_formula =
 	let _ = line2grid string_formula 0 0 in
-	let  formula =  fill_case 0 0 (unique_mat 0 0 (define_mat 0 0 (valid_all_columns 0 (valid_all_lines 0 (valid_all_small_grids 0 0 []))))) in
+	fill_case 0 0 (unique_mat 0 0 (define_mat 0 0 (valid_all_columns 0 (valid_all_lines 0 (valid_all_small_grids 0 0 [])))))
+
+let formatting string_formula =
+  let formula = formulate string_formula in
 	printgrid grid 0 0;
 	printdimacs formula;;
 
@@ -218,29 +221,53 @@ let filetolist f = try let ic = open_in f in
 		with Not_found -> printf "What!\n";[];;
 		
 	
+
+let rec decode_var value =
+   let i = if (value mod 81 <> 0)then value/81 else (value/81 -1) in 
+   let j = if (value - 81*i) mod 9 <> 0 
+      then (value-81*i)/ 9 
+      else ((value-81*i)/9-1) in 
+   let d = (value - 81*i - 9*j) in 
+   (i,j,d)
+
 let rec turn2grid solution matrix=
 	match solution with
 	|a1::a2::a3::a4::a5::a6::a7::a8::a9::rest ->
 		 let aux =[a1;a2;a3;a4;a5;a6;a7;a8;a9] in 
 		 let value= int_of_string (List.find (fun s -> (int_of_string s) > 0) aux) in 
-		 let i = if (value mod 81 <> 0)then value/81 else (value/81 -1) in 
-		 let j = if (value - 81*i) mod 9 <> 0 
-				then (value-81*i)/ 9 
-				else ((value-81*i)/9-1) in 
-		 let d = (value - 81*i - 9*j) in 
-			matrix.(i).(j) <- d; 
+     let i,j,d = decode_var value in
+      matrix.(i).(j) <- d; 
 			turn2grid rest matrix
 	|_ -> matrix;;
 
+let rec turnvalu2grid bindings matrix =
+  List.iter (fun (value,b) ->
+    if b then
+    let i,j,d = decode_var value in
+    matrix.(i).(j) <- d
+    else ()) bindings;
+  matrix
+
+let rec turn2str matrix=
+	 Array.fold_right (fun l acc ->
+		(Array.fold_right (fun d acc' ->
+		(string_of_int d)^acc') l "")^acc) matrix ""
 
 let run_minisat f = let code = Sys.command "minisat dimacs.txt solution.txt -no-luby -rinc=1.5 -phase-saving=0 -rnd-freq=0.02" in
 		    if code = -1 
 			then printf "Something went wrong using minisat\n"
 			else 
 				printf "Minisat solution output in file solution.txt\n";
-				printgrid (turn2grid (filetolist "solution.txt") (Array.make_matrix 9 9 0)) 0 0;;
+				let grid = turn2grid (filetolist "solution.txt") (Array.make_matrix 9 9 0) in
+				printgrid grid 0 0;
+				print_endline (turn2str grid);;
 
-	
-
-
-
+let list_of_fnc fnc =
+  let unique = function {cellule = {i;j}; d} -> 81 * i + 9 * j + d
+  (*and normalize = *)
+    (*let recursor n =*)
+      (*List.map (fun l -> List.map (fun (n,b) -> *)
+        (*(if Hashtbl.mem h n then () else Hashtbl.add h n (Hashtbl.length h));*)
+        (*(Hashtbl.find n,b)))*)
+  in let to_list = List.map (fun c -> List.map (fun a -> (unique a, a.signe)) c)
+  in to_list fnc

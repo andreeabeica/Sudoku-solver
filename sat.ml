@@ -47,7 +47,7 @@ module type Solver = sig
 end
 
 module S : Solver = struct
-  module ValMap = Map.Make(struct type t = int let compare = compare end)
+  module ValMap = Map.Make(struct type t = int let compare a b = a - b end)
 
   type sign = bool
   type lit = int * sign
@@ -123,10 +123,10 @@ let rec solve' (gamma,delta) k =
     k ()
 
   else match S.next_var gamma delta with
-  | None -> print_endline "no next var"; None
+  | None -> print_endline "error: no next var"; None
   | Some n ->
     let build l = clean gamma l delta in
-    solve' (build (to_lit n true)) (fun () -> solve' (build (to_lit n false)) k)
+    solve' (build (S.to_lit n true)) (fun () -> solve' (build (S.to_lit n false)) k)
 
 (* Initiate solving *)
 let solve delta = solve' (S.empty_valuation,delta) (fun () -> None)
@@ -138,7 +138,21 @@ let print_valu gamma =
     | (n,b)::r -> print_endline ((string_of_int n)^": "^(string_of_bool b)); aux r
   in aux (S.bindings gamma)
 
-let _ =
-  match solve @@ S.to_form [ [1,true ; 2,false] ; [1, false] ; [1,true ; 3, true] ] with
+let print_solve l =
+  match solve @@ S.to_form l with
   | None -> print_endline "No"
   | Some gamma -> print_endline "ok"; print_valu gamma
+
+let run_sat string_formula = 
+  let open Sudoku in
+  let res = 
+    string_formula |> formulate |> list_of_fnc |> S.to_form |> solve
+  in match res with
+  | None -> print_endline "unsat"
+  | Some gamma -> 
+      let grid = turnvalu2grid (S.bindings gamma) (Array.make_matrix 9 9 0) in
+      printgrid grid 0 0;
+      print_endline (turn2str grid)
+
+(*let _ = run_sat*)
+(*"200000058010007340604000000040001060000020000020300010000000706035400090860000004"*)

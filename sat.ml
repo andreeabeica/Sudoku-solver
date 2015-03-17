@@ -30,7 +30,7 @@ module type Solver = sig
 
   (* Boolean constraints propagation under the assumption that
    * the given literal is true. BCP + ASSUME *)
-  val clean : valu -> lit -> form -> (valu * form)
+  val clean : valu -> lit -> form -> (valu * form) option
 
   (* Find a clause with exactly one literal *)
   (* A more elegant type would be form -> lit option *)
@@ -70,12 +70,14 @@ module S : Solver = struct
     List.filter (fun disj -> not (List.exists (fun l' -> l = l') disj)) delta
 
   (* Remove l everywhere it appears *)
-  let remove_lit l lits delta : form * (lit list) = 
+  let remove_lit l lits delta : (form * (lit list)) option = 
     List.fold_left (fun acc disj ->
+      match acc with None -> None | Some acc ->
       let r = List.filter (fun l' -> l <> l') disj in
       match r with
-      | [l] -> fst acc, l::(snd acc)
-      | _ -> r::(fst acc), snd acc) ([],lits) delta
+      | [l] -> Some (fst acc, l::(snd acc))
+      | [] -> None
+      | _ -> Some (r::(fst acc), snd acc)) (Some ([],lits)) delta
 
     (*List.map (fun disj -> List.filter (fun l' -> l <> l') disj) delta*)
 
@@ -97,14 +99,15 @@ module S : Solver = struct
     *    Otherwise, stop *)
   let rec clean gamma l delta =
     let rec bla gamma l lits delta = 
-      let delta', lits' = bcp l lits delta 
-      in assume (assign l gamma) delta' lits'
+      match bcp l lits delta with
+      | None -> None
+      | Some (delta',lits') -> assume (assign l gamma) delta' lits'
     (*delta |> S.bcp l |> assume (S.assign l gamma)*)
 
     and assume gamma delta lits =
       match lits with
       | l::ls -> bla gamma l ls delta
-      | [] -> gamma, delta
+      | [] -> Some (gamma, delta)
 
     in bla gamma l [] delta
 
@@ -134,12 +137,12 @@ end
  * - If delta is trivially unsatisfiable, backtrack (CONFLICT)
  * - Otherwise, assume a new literal and recursively solve 
  *   on a cleaned version of the resulting system (UNSAT) *)
-let rec solve' (gamma,delta) k =
+let rec solve' state k =
+  match state with
+  | None -> k ()
+  | Some (gamma, delta) ->
   if S.trivially_true delta then
     Some gamma
-
-  else if S.trivially_false delta then
-    k ()
 
   else match S.next_var gamma delta with
   | None -> print_endline "error: no next var"; None
@@ -148,7 +151,7 @@ let rec solve' (gamma,delta) k =
     solve' (build (S.to_lit n true)) (fun () -> solve' (build (S.to_lit n false)) k)
 
 (* Initiate solving *)
-let solve delta = solve' (S.empty_valuation,delta) (fun () -> None)
+let solve delta = solve' (Some (S.empty_valuation,delta)) (fun () -> None)
 
 (* Print resulting valuation when the formulas is SAT *)
 let print_valu gamma = 

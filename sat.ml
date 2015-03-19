@@ -33,11 +33,12 @@ module type Solver = sig
 
   (* Boolean constraints propagation under the assumption that
    * the given literal is true *)
-  val bcp : lit -> lits -> form -> form
+  (*val bcp : lit -> lits -> form -> form*)
 
   (* Find a clause with exactly one literal *)
   (* A more elegant type would be form -> lit option *)
-  val get_forced_lit : form -> (lit * lits * form) option
+  val clean : valu -> lit -> lits -> form -> (valu * form)
+  (*val get_forced_lit : form -> (lit * lits * form) option*)
 
   (* Whether the given formula is trivially true (empty)
    * or trivially false (contains an empty disjunction *)
@@ -75,6 +76,7 @@ module S : Solver = struct
   let neg l = (fst l, not (snd l))
   let empty_valuation = ValMap.empty
   let assign l setA gamma = ValMap.add (fst l) (snd l,setA) gamma
+  let defined l gamma = ValMap.mem (fst l) gamma
 
   let top = []
   let conj d d' = d@d'
@@ -90,21 +92,56 @@ module S : Solver = struct
     List.filter (fun (disj,_) -> not (List.exists (fun l' -> l = l') disj)) delta
 
   (* Remove l everywhere it appears *)
-  let remove_lit l setB delta : form = 
-    List.map (fun (disj,setC) -> 
+  (*let remove_lit l setB delta : form = *)
+    (*List.map (fun (disj,setC) -> *)
+      (*match List.partition (fun l' -> l' = l) disj with*)
+      (*| [], _ -> (disj,setC)*)
+      (*| _, disj' -> (disj', union setB setC)) delta*)
+
+  let remove_lit l setB lits delta = 
+    List.fold_left (fun (lits, form) (disj,setC) ->
       match List.partition (fun l' -> l' = l) disj with
-      | [], _ -> (disj,setC)
-      | _, disj' -> (disj', union setB setC)) delta
+      | [], [l] -> ((l,setC)::lits,form)
+      | [], disj' -> (lits,(disj,setC)::form)
+      | _, [l] -> ((l,union setB setC)::lits, form)
+      | _, disj' -> (lits, (disj', union setB setC)::form)) (lits,[]) delta
 
-  let bcp l setB delta =
-    delta |> remove_disj l |> remove_lit (neg l) setB
+  let bcp l setB lits delta =
+    delta |> remove_disj l |> remove_lit (neg l) setB lits
 
-  let get_forced_lit delta =
-    let rec aux acc = function
-      | [] -> None
-      | ([l],setA)::delta' -> Some (l, setA, acc@delta')
-      | disj::delta' -> aux (disj::acc) delta'
-    in aux [] delta
+  (* Clean maximally:
+    * 1) Repeatedly propagate constraints (BCP)
+    * 2) If some l has to be assumed, assume it and recurse. (ASSUME)
+    *    Otherwise, stop *)
+  (*let rec clean gamma l setA delta =*)
+    (*delta |> S.bcp l setA |> assume (S.assign l setA gamma)*)
+
+  (*and assume gamma delta =*)
+    (*match S.get_forced_lit delta with*)
+    (*| Some (l, setA, delta') -> clean gamma l setA delta'*)
+    (*| None -> (gamma,delta)*)
+
+  let rec clean gamma l setA delta =
+
+    let rec recursor gamma l lits setA delta =
+      if (defined l gamma) then
+        assume gamma (lits,delta)
+      else
+        delta |> bcp l setA lits |> assume (assign l setA gamma)
+
+    and assume gamma (lits,delta) =
+      match lits with
+      | (l,setA)::ls -> recursor gamma l ls setA delta
+      | [] -> (gamma,delta)
+
+    in recursor gamma l [] setA delta
+
+  (*let get_forced_lit delta =*)
+    (*let rec aux acc = function*)
+      (*| [] -> None*)
+      (*| ([l],setA)::delta' -> Some (l, setA, acc@delta')*)
+      (*| disj::delta' -> aux (disj::acc) delta'*)
+    (*in aux [] delta*)
 
   let trivially_true = function [] -> true | _ -> false
 
@@ -138,18 +175,6 @@ module S : Solver = struct
   let to_lit n b = (n,b)
 end
 
-(* Clean maximally:
-  * 1) Repeatedly propagate constraints (BCP)
-  * 2) If some l has to be assumed, assume it and recurse. (ASSUME)
-  *    Otherwise, stop *)
-let rec clean gamma l setA delta =
-  delta |> S.bcp l setA |> assume (S.assign l setA gamma)
-
-and assume gamma delta =
-  match S.get_forced_lit delta with
-  | Some (l, setA, delta') -> clean gamma l setA delta'
-  | None -> (gamma,delta)
-
 
 (* Main solver
  * - If delta is True, return current valuation
@@ -171,7 +196,7 @@ let rec solve' (gamma,delta) k =
   | Some n ->
     let lt = S.to_lit n true
     and lf = S.to_lit n false
-    and build l set delta = clean gamma l set delta in
+    and build l set delta = S.clean gamma l set delta in
     solve' (build lt (S.singleton lt) delta)
     (fun (setA,conflicts) -> 
       if S.mem lt setA 

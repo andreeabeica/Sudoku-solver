@@ -17,6 +17,7 @@ type var = {
 type state =  { 
     mutable valuation: bool V.t;
     literals: var array;
+    constraints: (bool option) array;
     mutable num: int;
     formula: ((int * int) option) array;
     mutable last_var: int;
@@ -97,6 +98,7 @@ let state_of_list list =
   let state = { literals = literals;
     valuation = V.empty;
     num = !formula_counter;
+    constraints = Array.create !variable_counter None;
     formula = formula;
     last_var = 1;
     max_var = !variable_counter }
@@ -126,35 +128,36 @@ let remove_disj_with l s =
   (occurences l s) |> Queue.iter @@ fun occ -> remove_disj s occ
   (*List.filter (fun disj -> not (List.exists (fun l' -> l = l') disj)) delta*)
 
-let save lit stack =
+let save lit map =
   log "saving %i on stack\n" lit;
-  if lit < 0 
-  then Stack.push (-lit,false) stack
-  else if lit > 0
-  then Stack.push (lit,true) stack
-  else failwith "No variable can have index 0"
+  let n,b = abs lit, lit > 0 in
+  try
+    if b = (V.find n map) then map else raise Exit
+  with Not_found ->
+    V.add n b map
 
 (* Remove l everywhere it appears *)
-let remove_lit (n,b) s stack = 
+let remove_lit (n,b) s map = 
   log "Remove_lit (%i,%b)\n" n b;
-  let aux occurence =
+  let aux map occurence = 
+    match map with None -> raise Exit | Some map ->
     match s.formula.(occurence) with
-    | None -> ()
+    | None -> Some map
     | Some (lits,count) ->
       let rest = if b then lits - n else lits + n in
       s.formula.(occurence) <- Some (rest, count-1);
       log "... in remove_lit:  (rest,%i), (new count,%i)\n" rest (count-1);
       match count-1 with
       | 0 -> raise Exit
-      | 1 -> save rest stack; remove_disj s occurence
-      | _ -> ()
+      | 1 -> remove_disj s occurence; Some (save rest map)
+      | _ -> Some map
   in 
-  try Queue.iter aux (occurences (n,b) s); true with Exit -> false
+  try Queue.fold aux (Some map) (occurences (n,b) s) with Exit -> None
   (*List.map (fun disj -> List.filter (fun l' -> l <> l') disj) delta*)
 
-let bcp l s stack =
+let bcp l s =
   log "bcp (%i,%b)\n" (fst l) (snd l);
-  remove_disj_with l s; remove_lit (neg l) s stack
+  remove_disj_with l s; remove_lit (neg l) s
 
 (* Clean maximally:
   * 1) Repeatedly propagate constraints (BCP)
@@ -162,21 +165,18 @@ let bcp l s stack =
   *    Otherwise, stop *)
 let rec clean l s =
   log "Clean (%i,%b)\n" (fst l) (snd l);
-  let rec recursor l s stack =
+  let rec recursor l s map =
     log_state s;
-    if (defined l s) then
-      assume s stack
-    else
-      if bcp l s stack 
-      then (assign l s; assume s stack)
-      else false
+    match bcp l s map with
+    | None -> false
+    | Some map -> assign l s; assume s map
 
-  and assume s stack =
-    if Stack.is_empty stack 
+  and assume s map =
+    if V.is_empty map 
     then true 
-    else recursor (Stack.pop stack) s stack
+    else let (n,b) = V.min_binding map in recursor (n,b) s (V.remove n map) 
 
-  in recursor l s (Stack.create ())
+  in recursor l s (V.empty)
 
 let trivially_true s = s.num <= 0
 

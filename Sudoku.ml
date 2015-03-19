@@ -285,7 +285,7 @@ let filetolist f =
   in
   let n = in_channel_length ic 
   in
-  let s = String.create n 
+  let s = Bytes.create n 
   in
   let _ = really_input ic s 0 n 
   in
@@ -294,7 +294,7 @@ let filetolist f =
   in
    close_in ic;	
    s_list
- with Not_found -> printf "What!\n";[]
+ with Not_found -> printf "Something went wrong in opening the solution file! \n";[]
 ;;
 		
 	
@@ -385,7 +385,7 @@ let run_minisat f =
       end;
       exit 0
   | _ -> 
-      printf "unknown minisat error"; 
+      printf "unknown minisat error\n"; 
       exit 2
 
 let list_of_fnc fnc =

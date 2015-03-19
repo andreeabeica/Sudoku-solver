@@ -41,6 +41,8 @@ module type Solver = sig
   val trivially_true : form -> bool
   val trivially_false : form -> bool
 
+  val initial_constraints : (valu * form) -> (valu * form)
+
   (* Next undefined variable mentioned by the formula *)
   val next_var : valu -> form -> int option
 
@@ -77,8 +79,7 @@ module S : Solver = struct
       match r with
       | [(n,b)] -> 
           (try
-            if (ValMap.find n lits) <> b then raise Exit
-            else acc
+            if (ValMap.find n lits) <> b then raise Exit else acc
           with Not_found -> 
             (fst acc), (ValMap.add n b (snd acc)))
       | _ -> r::(fst acc), snd acc) ([],lits) delta
@@ -95,12 +96,12 @@ module S : Solver = struct
     let delta' = remove_disj l delta in
     remove_lit (neg l) lits delta'
 
-  (*let get_forced_lit delta =*)
-    (*let rec aux acc = function*)
-      (*| [] -> None*)
-      (*| [l]::delta' -> Some (l, acc@delta')*)
-      (*| disj::delta' -> aux (disj::acc) delta'*)
-    (*in aux [] delta*)
+  let get_forced_lit delta =
+    let rec aux acc = function
+      | [] -> None
+      | [l]::delta' -> Some (l, acc@delta')
+      | disj::delta' -> aux (disj::acc) delta'
+    in aux [] delta
 
   (* Clean maximally:
     * 1) Repeatedly propagate constraints (BCP)
@@ -120,6 +121,11 @@ module S : Solver = struct
       with Not_found -> gamma, delta
 
     in recursor gamma l ValMap.empty delta
+
+  let rec initial_constraints (gamma,delta) =
+    match get_forced_lit delta with
+    | None -> (gamma,delta)
+    | Some (l, delta') -> initial_constraints (clean gamma l delta')
 
   let trivially_true = function [] -> true | _ -> false
 
@@ -161,7 +167,7 @@ let rec solve' (gamma,delta) k =
     solve' (build (S.to_lit n true)) (fun () -> solve' (build (S.to_lit n false)) k)
 
 (* Initiate solving *)
-let solve delta = solve' (S.empty_valuation,delta) (fun () -> None)
+let solve delta = solve' (S.initial_constraints (S.empty_valuation,delta)) (fun () -> None)
 
 (* Print resulting valuation when the formulas is SAT *)
 let print_valu gamma = 

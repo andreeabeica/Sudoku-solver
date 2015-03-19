@@ -64,23 +64,10 @@ let state_of_list list =
     !variable_counter 
     (fun _ -> { pos = Queue.create (); neg = Queue.create () }) in
 
-  (*
-  let trivial disj = 
-    try
-      ignore(
-      List.fold_left
-      (fun acc (n,b) -> if List.mem (n, not b) acc then raise Exit else (n,b)::acc)
-      [] disj); false
-    with Exit -> true in
-  let contradict disj = disj = [] in
-*)
   let formula_counter = ref 0 in
   list |> List.iter (fun disj ->
- (*   if contradict disj then raise Exit
-    else if trivial disj then ()
-    else *)begin
+    begin
       let store = List.fold_left (fun (lits,count) (n,b) ->
-        (*let (lits, count) = formula.(!formula_counter) in*)
         log "add (%i,%b) at literals.(%i)\n" n b (n-1);
         log "..and formula.(%i) was (%i,%i)\n" !formula_counter lits count;
         (if b then begin
@@ -126,7 +113,6 @@ let occurences (n,b) s =
 let remove_disj_with l s = 
   log "remove_disj_with (%i,%b)\n" (fst l) (snd l);
   (occurences l s) |> Queue.iter @@ fun occ -> remove_disj s occ
-  (*List.filter (fun disj -> not (List.exists (fun l' -> l = l') disj)) delta*)
 
 let save lit map =
   log "saving %i on stack\n" lit;
@@ -180,12 +166,6 @@ let rec clean l s =
 
 let trivially_true s = s.num <= 0
 
-(*let bindings = ValMap.bindings*)
-
-(*Sat.print_solve [ [1,true ; 2,false] ; [1, false] ; [1,true ; 3, true] ]*)
-    
-(*let to_lit n b = (n,b)*)
-
 let rec next_lit s =
   log "next lit, last_var: %i, max_var: %i\n" s.last_var s.max_var;
   if s.last_var <= s.max_var
@@ -227,13 +207,6 @@ let solve list =
   | Some valuation -> 
       Some (List.map (fun (n,b) -> Hashtbl.find h' n, b) (V.bindings valuation))
 
-(*type state =  { valuation: V.t;*)
-    (*num: ref int;*)
-    (*formula: (int * int) array;*)
-    (*last_var: int;*)
-    (*max_var: int;*)
-  (*}*)
-
 (* Print resulting valuation when the formulas is SAT *)
 let print_bindings bindings = 
   let rec aux = function
@@ -248,19 +221,4 @@ let print_solve l =
 
 let run_sat string_formula = 
   let open Sudoku in
-  let fnc = 
-    string_formula |> formulate 
-  in printdimacs fnc;
-  let res = fnc |> list_of_fnc |> solve
-  in match res with
-  | None -> print_endline "unsat"
-  | Some bindings -> 
-      let grid = turnvalu2grid bindings (Array.make_matrix 9 9 0) in
-      printgrid grid 0 0;
-      print_endline (turn2str grid)
-
-(*let _ = run_sat*)
-(*"200000058010007340604000000040001060000020000020300010000000706035400090860000004"*)
-(*
-    Sat.print_solve [ [1,true ; 2,false] ; [1, false] ; [1,true ; 3, true] ]
-*)
+  string_formula |> formulate  |> list_of_fnc |> solve |> sat_result

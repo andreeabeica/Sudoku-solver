@@ -40,42 +40,34 @@ optimisations mentionnées ci-dessus.
 On remarquera que chaque propagation de contrainte nécessite deux parcours
 linéaires des clauses en cours de considération.
 
-\subsection{Résultats} La version de base de DPLL résoud un Sudoku en ~1.5s
-environ. Les deux optimisations provoquent chacune un ralentissement de 15\%,
-probablement parce que les formules caractéristiques d'un sudoku permettent peu
-d'exploiter ces optimisations. Par exemple, lors d'un test, nous avons constaté
-qu'un grille de Sudoku nécessitait 57 choix de littéraux et que le retour en
-arrière non chronologique était appliqué à seulement 3 de ces choix.
+\subsection{Résultats} La version de base de DPLL résoud un Sudoku en ~1.4s
+environ. Les deux optimisations offrent une légère accélération ($< 10\%$),
+mais lorsqu'il est peu utile, l'apprentissage ralentit le calcul ($< 10\%$
+aussi). L'usage du backjumping était rare, probablement parce que les formules 
+caractéristiques d'un sudoku permettent peu d'exploiter ces optimisations. Par
+exemple, lors d'un test, nous avons constaté qu'un grille de Sudoku nécessitait
+57 choix de littéraux et que le retour en arrière non chronologique était
+appliqué à seulement 3 de ces choix.
 
-On peut descendre à ~1.1s en appliquant les deux optimisations suivantes:
-\begin{enumerate} \item Lors de la propagation de contraintes générées par la
-      supposition d'un littéral, toute clause qui n'a plus qu'un seul littéral
-      est immédiatement supprimée et le littéral est placé dans une file
-      d'attente. La version naïve se contentait d'appliquer les contraintes
-      puis de répéter l'opération de recherche de clauses réduites à un seul
-      littéral.  \item Toujours lors de la propagation de contraintes, une
-    clause vide déclenche un échec immédiat. La version naïve se contentait de
-rechercher des clauses vides après chaque propagation de contrainte.
-\end{enumerate}
+On a aussi essayé une version impérative, en général plus rapide d'environ
+$30\%$ mais parfois deux fois plus lente.
 
-Ces deux optimisations n'ont pas été immédiatement considérées parce qu'elles
-rendent le code moins lisible.
+On pourrait vouloir améliorer les versions purement fonctionnelles en plaçant
+les clauses dans un \emph{file de priorité}, afin de pouvoir rapidement
+extraire les clauses qui n'ont plus qu'un seul littéral.
 
-\subsection{Tags Git}
 
-Nous avons conservé différentes versions grâce à des tags {\tt git}, visibles grâce
-à la commande {\tt git tag}. Vous pouvez consulter le code d'un tag grâce à la
-commande {\tt git checkout <tag>}.
+\subsection{Branches Git}
 
-Liste des tags : 
+Nous avons conservé différentes versions grâce à des branches {\tt git}, visibles grâce
+à la commande {\tt git branch}. Vous pouvez consulter le code d'un tag grâce à la
+commande {\tt git checkout <branch>}.
 
-\paragraph{ds-trivial-lists} DPLL de base, aucune optimisation 
-\paragraph{ds-lone-literals-lists} DPLL de base, les littéraux seuls sont automatiquement
-ajoutés à une file d'attente.
-\paragraph{ds-abort-on-empty-disjs-lists} DPLL de base,
-optimisation précédente + échec immédiat lorsque l'on vide une clause.
-\paragraph{algo-backtracking} Retour en arrière non chronologique.
-\paragraph{algo-backtracking-ds-trivial-lists,\\ algo-backtracking-ds-abort-on-empty-disj} Retour en arrière non chronologique + les optimisations mentionnées ci-dessus.
-\paragraph{algo-learning} Retour en arrière non chronologique + Apprentissage.
+Seules les branches ci-dessous ont un intérêt, les autres représentent des essais ratés :
+
+\paragraph{master} DPLL avec retour en arrière non-chronologique.
+\paragraph{base} DPLL de base
+\paragraph{learning} DPLL avec retour en arrière non-chronologique et apprentissage
+\paragraph{imperative} DPLL de base, version impérative
 
 \end{document}

@@ -110,6 +110,7 @@ let remove_disj s disj =
   end else ()
 
 let assign (n,b) s = s.valuation <- V.add n b s.valuation
+let defined (n,b) s = V.mem n s.valuation
 
 let neg (n,b) = (n, not b)
 
@@ -163,9 +164,12 @@ let rec clean l s =
   log "Clean (%i,%b)\n" (fst l) (snd l);
   let rec recursor l s stack =
     log_state s;
-    if bcp l s stack 
-    then (assign l s; assume s stack)
-    else false
+    if (defined l s) then
+      assume s stack
+    else
+      if bcp l s stack 
+      then (assign l s; assume s stack)
+      else false
 
   and assume s stack =
     if Stack.is_empty stack 

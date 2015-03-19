@@ -1,0 +1,50 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\begin{document}
+\title{Solving the Sudoku problem}
+\author{Andreea Beica%
+  \thanks{Electronic address: \texttt{beica@clipper.ens.fr}; }, Adrien Husson%
+  \thanks{Electronic address: \texttt{adhusson@gmail.com}}}
+\maketitle
+
+\section{Encoder une grille Sudoku}
+
+Comme d\'{e}crit dans l'article de Tjark Weber, la premi\`{e}re \'{e}tape du projet consiste \'{a} encoder les contraintes du jeu de Sudoku dans des formules en forme normale conjoctive.
+
+Ainsi, une grille de Sudoku peut \^{e}tre caracteris\'{e} par une contrainte de validit\'{e} pour chaque ligne, colonne et petite grille (donc 27 clauses). 
+
+La contrainte de validit\'{e} dit que l'ensemble sur lequel elle est appliqu\'{e} doit contenir exactement les chiffres de 1 \'{a} 9. En introduisant 9 variables bool\'{e}ennes par case, la validit\'{e} peut \^{e}tre formul\'{e} par des \textbf{definedness clauses}, assurant que chaque case contient une valeur de 1 \'{a} 9 ($\bigvee_{d=1}^{9}p_{ij}^d$, where $p_{ij}^d$ est vrai si $x_{ij} = d$) et des \textbf{uniqueness clauses}, assurant que chaque deux cases de l'ensemble consider\'{e} contiennent des valeurs differents (valid($x_1, x_2, \ldots, x_9 \Leftrightarrow \land_{1\leq i < j \leq 9} \land_{d=1}^{9} (x_i \neq d \vee x_j \neq d )$).
+
+En total, on obtient 729 literaux (9 par case, 81 cases) et 11745 clauses, plus une clause par case remplie dans la grille initiale (qui fixe la valeur de la case).
+
+On pourrait r\'{e}duire le nombre des clauses en ne considerant pas les contraintes de validit\'{e} pour les cases d\'{e}j\`{a} remplies, mais pour la claret\'{e} de la g\'{e}n\'{e}ration des clauses, on choisit de ne pas faire cette simplification.
+
+\paragraph{Choix de structure:}
+
+On choisit de repr\'{e}senter les formules par les types OCaml suivants:
+
+\begin{itemize}
+\item les indices d'une case par: \textbf{type cellule = \{ i : int; j : int \}}
+\item les atomes par: \textbf{type atome = \{ cellule : cellule; d : int; signe : bool \}}; ainsi, $x_{ij}=d \Leftrightarrow$ {[\{cellule = \{i=i; j=j\}; d = d; signe = true\}]} et $x_{ij}\neq d \Leftrightarrow$ {[\{cellule = \{i=i; j=j\}; d = d; signe = false\}]}
+\item une clause par une liste des atomes (qu'on disjonctionne)
+\item une formule en forme normale conjoctive par une liste des clauses
+\end{itemize}
+
+\paragraph{Fichier en format dimacs}
+
+Notre programme re\c{c}o\^{i} une grille Sudoku (en forme de ligne) et construit le fichier "dimacs.txt", qui contient la formule en forme normale conjoctive (fnc) qui lui correspond.
+
+\begin{center}
+
+\end{center}
+\section{Minisat solver}
+Si on appelle \textit{sudoku-solver} avec l'option \textbf{minisat}, le solveur minisat est utilis\'{e} sur le fichier contenant la fnc en format dimacs pour r\'{e}soudre la grille de Sudoku. 
+\end{document} 
+
+

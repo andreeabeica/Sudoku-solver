@@ -1,0 +1,73 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\begin{document}
+\subsection{Algorithme implémenté}
+
+Nous avons implémenté un solveur SAT [1] basé sur DPLL. La procédure de base
+consiste à maintenir une interprétation partielle et une formule en forme CNF.
+On applique les contraintes générées par l'interprétation et on suppose vraies
+les clauses à un seul littéral. Lorsqu'il ne reste plus de contrainte forcée,
+on suppose vrai un littéral et on poursuit; en cas d'échec, on suppose on le
+littéral faux et on recommence.
+
+Les deux optimisations sont :
+
+\paragraph{Retour en arrière non chronologique}
+
+Si supposer un littéral $l$ conduit à un échec, on inspecte les littéraux
+responsables de cet échec. Si $l$ n'est pas l'un d'eux, il est inutile de
+recommencer en supposant $l$ faux.
+
+\paragraph{Apprentissage}
+
+On garde en mémoire tous les conflits causés par les échecs précédents. Lorsque
+l'on essaie une nouvelle branche suite à un échec, on ajoute ces conflits à la
+liste des clauses à satisfaire.
+
+\subsection{Choix d'implémentation} Nous avons utilisé des structures de
+données purement fonctionnelles et nous manipulons les formules et clauses de
+façon assez naïve (et inefficace, mais les résultats sont tous de même
+satisfaisants). Les formules sont des listes de listes de couples {\tt int * bool}
+(dans la version de base). Les types sont un peu enrichis par les deux
+optimisations mentionnées ci-dessus.
+
+On remarquera que chaque propagation de contrainte nécessite deux parcours
+linéaires des clauses en cours de considération.
+
+\subsection{Résultats} La version de base de DPLL résoud un Sudoku en ~1.4s
+environ. Les deux optimisations offrent une légère accélération ($< 10\%$),
+mais lorsqu'il est peu utile, l'apprentissage ralentit le calcul ($< 10\%$
+aussi). L'usage du backjumping était rare, probablement parce que les formules 
+caractéristiques d'un sudoku permettent peu d'exploiter ces optimisations. Par
+exemple, lors d'un test, nous avons constaté qu'un grille de Sudoku nécessitait
+57 choix de littéraux et que le retour en arrière non chronologique était
+appliqué à seulement 3 de ces choix.
+
+On a aussi essayé une version impérative, en général plus rapide d'environ
+$30\%$ mais parfois deux fois plus lente.
+
+On pourrait vouloir améliorer les versions purement fonctionnelles en plaçant
+les clauses dans un \emph{file de priorité}, afin de pouvoir rapidement
+extraire les clauses qui n'ont plus qu'un seul littéral.
+
+
+\subsection{Branches Git}
+
+Nous avons conservé différentes versions grâce à des branches {\tt git}, visibles grâce
+à la commande {\tt git branch}. Vous pouvez consulter le code d'un tag grâce à la
+commande {\tt git checkout <branch>}.
+
+Seules les branches ci-dessous ont un intérêt, les autres représentent des essais ratés :
+
+\paragraph{master} DPLL avec retour en arrière non-chronologique.
+\paragraph{base} DPLL de base
+\paragraph{learning} DPLL avec retour en arrière non-chronologique et apprentissage
+\paragraph{imperative} DPLL de base, version impérative
+
+\end{document}

@@ -186,30 +186,22 @@ let rec solve' (gamma,delta) k =
       else k (setA, S.shift lt conflicts) (* BJ *))
 
 (* Initiate solving *)
-let solve delta = solve' (S.empty_valuation,delta) (fun info -> None)
+let solve delta = match solve' (S.empty_valuation,delta) (fun info -> None) with
+| None -> None
+| Some gamma -> Some (S.bindings gamma)
 
 (* Print resulting valuation when the formulas is SAT *)
-let print_valu gamma = 
+let print_valu bindings = 
   let rec aux = function
     | [] -> ()
     | (n,b)::r -> print_endline ((string_of_int n)^": "^(string_of_bool b)); aux r
-  in aux (S.bindings gamma)
+  in aux bindings
 
 let print_solve l =
   match solve @@ S.to_form l with
   | None -> print_endline "No"
-  | Some gamma -> print_endline "ok"; print_valu gamma
+  | Some bindings -> print_endline "ok"; print_valu bindings
 
 let run_sat string_formula = 
   let open Sudoku in
-  let res = 
-    string_formula |> formulate |> list_of_fnc |> S.to_form |> solve
-  in match res with
-  | None -> print_endline "unsat"
-  | Some gamma -> 
-      let grid = turnvalu2grid (S.bindings gamma) (Array.make_matrix 9 9 0) in
-      printgrid grid 0 0;
-      print_endline (turn2str grid)
-
-(*let _ = run_sat*)
-(*"200000058010007340604000000040001060000020000020300010000000706035400090860000004"*)
+  string_formula |> formulate |> list_of_fnc |> S.to_form |> solve |> sat_result

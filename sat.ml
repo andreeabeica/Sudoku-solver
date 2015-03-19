@@ -1,3 +1,4 @@
+let debug = ref false
 (* Following Sylvain Conchon's article, we use 
  * [gamma] for valuations
  * [l] for literals

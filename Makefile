@@ -6,6 +6,3 @@ clean:
 	rm -f *.cm[iox] *~ .*~ #*#
 	rm -f *.mli
 	rm -r _build
-	rm -f sudoku-solver
-	rm -f dimacs.txt
-	rm -f solution.txt

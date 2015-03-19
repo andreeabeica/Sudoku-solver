@@ -64,6 +64,7 @@ module S : Solver = struct
   let neg l = (fst l, not (snd l))
   let empty_valuation = ValMap.empty
   let assign l gamma = ValMap.add (fst l) (snd l) gamma
+  let defined l gamma = ValMap.mem (fst l) gamma
 
   (* Remove all disjunctions containing l *)
   let remove_disj l delta : form = 
@@ -98,18 +99,20 @@ module S : Solver = struct
     * 2) If some l has to be assumed, assume it and recurse. (ASSUME)
     *    Otherwise, stop *)
   let rec clean gamma l delta =
-    let rec bla gamma l lits delta = 
-      match bcp l lits delta with
-      | None -> None
-      | Some (delta',lits') -> assume (assign l gamma) delta' lits'
-    (*delta |> S.bcp l |> assume (S.assign l gamma)*)
+    let rec recursor gamma l lits delta = 
+      if defined l gamma then
+        assume gamma delta lits
+      else
+        match bcp l lits delta with
+        | None -> None
+        | Some (delta',lits') -> assume (assign l gamma) delta' lits'
 
     and assume gamma delta lits =
       match lits with
-      | l::ls -> bla gamma l ls delta
+      | l::ls -> recursor gamma l ls delta
       | [] -> Some (gamma, delta)
 
-    in bla gamma l [] delta
+    in recursor gamma l [] delta
 
   let trivially_true = function [] -> true | _ -> false
 

@@ -392,3 +392,13 @@ let list_of_fnc fnc =
   let unique = function {cellule = {i;j}; d} -> 81 * i + 9 * j + d in
   let to_list = List.map (fun c -> List.map (fun a -> (unique a, a.signe)) c)
   in to_list fnc
+
+let sat_result = function
+  | None ->
+      print_endline "NoSolution";
+      exit 0
+  | Some bindings -> 
+      let grid = turnvalu2grid bindings (Array.make_matrix 9 9 0) in
+      if !debug then printgrid grid 0 0;
+      Printf.printf "Solution: %s\n" (turn2str grid);
+      exit 0

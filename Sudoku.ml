@@ -8,6 +8,8 @@ open Str
  type clause = atome list;;
  type fnc = clause list;;
 
+ let debug = ref false
+
 let grid = Array.make_matrix 9 9 0;;
 
 
@@ -269,12 +271,10 @@ let formulate string_formula =
 ;;
 
 let formatting string_formula =
- let formula = formulate string_formula 
- in
-  printgrid grid 0 0;
-  printdimacs formula
-;;
-
+  let formula = formulate string_formula in
+  (if !debug then
+	printgrid grid 0 0);
+	printdimacs formula;;
 
 
 (*turn minisat solution into Sudoku grid*)
@@ -340,27 +340,55 @@ let rec turn2str matrix=
 		(string_of_int d)^acc') l "")^acc) matrix ""
 ;;
 
+ (* Capture process output channels and exit code. Adapted from Rosetta Code *)
+let syscall (cmd : string) : int * string =
+  let ic, oc, ec = Unix.open_process_full cmd (Unix.environment ()) in
+  let bufi = Buffer.create 16 in
+  let bufe = Buffer.create 16 in
+  (try while true do Buffer.add_channel bufi ic 1 done with End_of_file -> ());
+  (try while true do Buffer.add_channel bufe ec 1 done with End_of_file -> ());
+  let retcode = Unix.(match close_process_full (ic, oc, ec) with
+  | WEXITED n -> n
+  | WSIGNALED _ -> 0
+  | WSTOPPED _ -> 0) in
+  (retcode, (Buffer.contents bufi) ^ (Buffer.contents bufe))
+
 let run_minisat f = 
- let code = 
-   Sys.command "minisat dimacs.txt solution.txt -no-luby -rinc=1.5 -phase-saving=0 -rnd-freq=0.02" 
- in
-  if code = -1 
-  then 
-   printf "Something went wrong using minisat\n"
-  else 
-   printf "Minisat solution output in file solution.txt\n";
-   let grid = turn2grid (filetolist "solution.txt") (Array.make_matrix 9 9 0) 
-   in
-    printgrid grid 0 0;
-    print_endline (turn2str grid)
-;;
+  let code, ret = 
+    syscall ("minisat dimacs.txt solution.txt -no-luby -rinc=1.5 -phase-saving=0 -rnd-freq=0.02") in
+  match code with
+  | -1 -> 
+      printf "minisat not found\n"; 
+      exit 1
+  | 0 | 1 | 3 -> 
+      print_endline ("minisat error "^(string_of_int code)^", see EXIT CODES section of relevant man page");
+      exit 1
+  | 10 -> 
+      let grid = turn2grid (filetolist "solution.txt") (Array.make_matrix 9 9 0) in
+      printf "Solution: %s\n" (turn2str grid);
+      if !debug then begin
+        printf "\nDebug information\n";
+        printf "------------------\n";
+        printgrid grid 0 0;
+        printf "\nMinisat solution output in file solution.txt\n";
+        printf "Minisat debug output:\n\n";
+        print_endline ret
+      end;
+      exit 0
+  | 20 ->
+      printf "NoSolution\n";
+      if !debug then begin
+        printf "Debug information\n";
+        printf "------------------\n";
+        printf "Minisat debug output:\n\n";
+        print_endline ret
+      end;
+      exit 0
+  | _ -> 
+      printf "unknown minisat error"; 
+      exit 2
 
 let list_of_fnc fnc =
-  let unique = function {cellule = {i;j}; d} -> 81 * i + 9 * j + d
-  (*and normalize = *)
-    (*let recursor n =*)
-      (*List.map (fun l -> List.map (fun (n,b) -> *)
-        (*(if Hashtbl.mem h n then () else Hashtbl.add h n (Hashtbl.length h));*)
-        (*(Hashtbl.find n,b)))*)
-  in let to_list = List.map (fun c -> List.map (fun a -> (unique a, a.signe)) c)
+  let unique = function {cellule = {i;j}; d} -> 81 * i + 9 * j + d in
+  let to_list = List.map (fun c -> List.map (fun a -> (unique a, a.signe)) c)
   in to_list fnc

@@ -1,5 +1,5 @@
-let debug = false
-let log s = if debug then Printf.printf s else Printf.ifprintf stdout s
+let debug = ref false
+let log s = if !debug then Printf.printf s else Printf.ifprintf stdout s
 
 (* Following Sylvain Conchon's article, we use 
  * [gamma] for valuations

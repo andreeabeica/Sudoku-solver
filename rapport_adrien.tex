@@ -1,0 +1,81 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\begin{document}
+\subsection{Algorithme implémenté}
+
+Nous avons implémenté un solveur SAT [1] basé sur DPLL. La procédure de base
+consiste à maintenir une interprétation partielle et une formule en forme CNF.
+On applique les contraintes générées par l'interprétation et on suppose vraies
+les clauses à un seul littéral. Lorsqu'il ne reste plus de contrainte forcée,
+on suppose vrai un littéral et on poursuit; en cas d'échec, on suppose on le
+littéral faux et on recommence.
+
+Les deux optimisations sont :
+
+\paragraph{Retour en arrière non chronologique}
+
+Si supposer un littéral $l$ conduit à un échec, on inspecte les littéraux
+responsables de cet échec. Si $l$ n'est pas l'un d'eux, il est inutile de
+recommencer en supposant $l$ faux.
+
+\paragraph{Apprentissage}
+
+On garde en mémoire tous les conflits causés par les échecs précédents. Lorsque
+l'on essaie une nouvelle branche suite à un échec, on ajoute ces conflits à la
+liste des clauses à satisfaire.
+
+\subsection{Choix d'implémentation} Nous avons utilisé des structures de
+données purement fonctionnelles et nous manipulons les formules et clauses de
+façon assez naïve (et inefficace, mais les résultats sont tous de même
+satisfaisants). Les formules sont des listes de listes de couples {\tt int * bool}
+(dans la version de base). Les types sont un peu enrichis par les deux
+optimisations mentionnées ci-dessus.
+
+On remarquera que chaque propagation de contrainte nécessite deux parcours
+linéaires des clauses en cours de considération.
+
+\subsection{Résultats} La version de base de DPLL résoud un Sudoku en ~1.5s
+environ. Les deux optimisations provoquent chacune un ralentissement de 15\%,
+probablement parce que les formules caractéristiques d'un sudoku permettent peu
+d'exploiter ces optimisations. Par exemple, lors d'un test, nous avons constaté
+qu'un grille de Sudoku nécessitait 57 choix de littéraux et que le retour en
+arrière non chronologique était appliqué à seulement 3 de ces choix.
+
+On peut descendre à ~1.1s en appliquant les deux optimisations suivantes:
+\begin{enumerate} \item Lors de la propagation de contraintes générées par la
+      supposition d'un littéral, toute clause qui n'a plus qu'un seul littéral
+      est immédiatement supprimée et le littéral est placé dans une file
+      d'attente. La version naïve se contentait d'appliquer les contraintes
+      puis de répéter l'opération de recherche de clauses réduites à un seul
+      littéral.  \item Toujours lors de la propagation de contraintes, une
+    clause vide déclenche un échec immédiat. La version naïve se contentait de
+rechercher des clauses vides après chaque propagation de contrainte.
+\end{enumerate}
+
+Ces deux optimisations n'ont pas été immédiatement considérées parce qu'elles
+rendent le code moins lisible.
+
+\subsection{Tags Git}
+
+Nous avons conservé différentes versions grâce à des tags {\tt git}, visibles grâce
+à la commande {\tt git tag}. Vous pouvez consulter le code d'un tag grâce à la
+commande {\tt git checkout <tag>}.
+
+Liste des tags : 
+
+\paragraph{ds-trivial-lists} DPLL de base, aucune optimisation 
+\paragraph{ds-lone-literals-lists} DPLL de base, les littéraux seuls sont automatiquement
+ajoutés à une file d'attente.
+\paragraph{ds-abort-on-empty-disjs-lists} DPLL de base,
+optimisation précédente + échec immédiat lorsque l'on vide une clause.
+\paragraph{algo-backtracking} Retour en arrière non chronologique.
+\paragraph{algo-backtracking-ds-trivial-lists,\\ algo-backtracking-ds-abort-on-empty-disj} Retour en arrière non chronologique + les optimisations mentionnées ci-dessus.
+\paragraph{algo-learning} Retour en arrière non chronologique + Apprentissage.
+
+\end{document}

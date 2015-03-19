@@ -64,7 +64,7 @@ module S : Solver = struct
   let neg l = (fst l, not (snd l))
   let empty_valuation = ValMap.empty
   let assign l gamma = ValMap.add (fst l) (snd l) gamma
-  let defined l gamma = ValMap.mem (fst l) gamma
+  let false_in l gamma = try (snd l) <> ValMap.find (fst l) gamma with Not_found -> false
 
   (* Remove all disjunctions containing l *)
   let remove_disj l delta : form = 
@@ -79,6 +79,12 @@ module S : Solver = struct
       | _ -> r::(fst acc), snd acc) ([],lits) delta
 
     (*List.map (fun disj -> List.filter (fun l' -> l <> l') disj) delta*)
+
+  (*let initial_constraints delta =*)
+    (*let gamma = empty_valuation in*)
+    (*let literals, delta' = *)
+      (*List.partition (function [l] -> true | _ -> false) delta*)
+    (*in assume (S.*)
 
   let bcp l lits delta =
     let delta' = remove_disj l delta in
@@ -97,8 +103,8 @@ module S : Solver = struct
     *    Otherwise, stop *)
   let rec clean gamma l delta =
     let rec recursor gamma l lits delta = 
-      if defined l gamma then
-        assume gamma delta lits
+      if false_in l gamma then
+        (gamma, [[]])
       else
         let delta', lits' = bcp l lits delta 
         in assume (assign l gamma) delta' lits'

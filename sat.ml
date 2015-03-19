@@ -70,6 +70,7 @@ module S : Solver = struct
   let neg l = (fst l, not (snd l))
   let empty_valuation = ValMap.empty
   let assign l setA gamma = ValMap.add (fst l) (snd l,setA) gamma
+  let defined l gamma = ValMap.mem (fst l) gamma
 
   let union = Lits.union
   let mem = Lits.mem
@@ -103,17 +104,20 @@ module S : Solver = struct
     *    Otherwise, stop *)
   let rec clean gamma l setA delta =
 
-    let rec bla gamma l lits setA delta =
-      delta |> bcp l setA lits |> assume (assign l setA gamma)
+    let rec recursor gamma l lits setA delta =
+      if (defined l gamma) then
+        assume gamma (Left (lits, delta))
+      else
+        delta |> bcp l setA lits |> assume (assign l setA gamma)
 
     and assume gamma = function
       | Right setA -> Right setA
       | Left (lits,delta) ->
       match lits with
-      | (l,setA)::ls -> bla gamma l ls setA delta
+      | (l,setA)::ls -> recursor gamma l ls setA delta
       | [] -> Left (gamma,delta)
 
-    in bla gamma l [] setA delta
+    in recursor gamma l [] setA delta
 
   let trivially_true = function [] -> true | _ -> false
 

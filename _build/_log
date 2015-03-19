@@ -1,14 +1,22 @@
 ### Starting build.
-# Target: main.ml.depends, tags: { extension:ml, file:main.ml, ocaml, ocamldep, quiet }
-/usr/bin/ocamldep -modules main.ml > main.ml.depends
-# Target: sat.ml.depends, tags: { extension:ml, file:sat.ml, ocaml, ocamldep, quiet }
-/usr/bin/ocamldep -modules sat.ml > sat.ml.depends
-# Target: Sudoku.ml.depends, tags: { extension:ml, file:Sudoku.ml, ocaml, ocamldep, quiet }
-/usr/bin/ocamldep -modules Sudoku.ml > Sudoku.ml.depends
-# Target: Sudoku.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:Sudoku.cmo, file:Sudoku.ml, implem, ocaml, quiet }
-/usr/bin/ocamlc -c -o Sudoku.cmo Sudoku.ml
-+ /usr/bin/ocamlc -c -o Sudoku.cmo Sudoku.ml
-File "Sudoku.ml", line 288, characters 10-22:
-Error: Unbound module Bytes
-Command exited with code 2.
-# Compilation unsuccessful.
+# Target: src/main.ml.depends, tags: { extension:ml, file:src/main.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules src/main.ml > src/main.ml.depends # cached
+# Target: src/sat.ml.depends, tags: { extension:ml, file:src/sat.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules src/sat.ml > src/sat.ml.depends # cached
+# Target: src/Sudoku.ml.depends, tags: { extension:ml, file:src/Sudoku.ml, ocaml, ocamldep, quiet }
+ocamlfind ocamldep -modules src/Sudoku.ml > src/Sudoku.ml.depends # cached
+# Target: src/Sudoku.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:src/Sudoku.cmo, file:src/Sudoku.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -I src -o src/Sudoku.cmo src/Sudoku.ml # cached
+# Target: src/sat.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:src/sat.cmo, file:src/sat.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -I src -o src/sat.cmo src/sat.ml # cached
+# Target: src/main.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:src/main.cmo, file:src/main.ml, implem, ocaml, quiet }
+ocamlfind ocamlc -c -I src -o src/main.cmo src/main.ml # cached
+# Target: src/Sudoku.cmx, tags: { compile, extension:cmx, extension:ml, file:src/Sudoku.cmx, file:src/Sudoku.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -I src -o src/Sudoku.cmx src/Sudoku.ml # cached
+# Target: src/sat.cmx, tags: { compile, extension:cmx, extension:ml, file:src/sat.cmx, file:src/sat.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -I src -o src/sat.cmx src/sat.ml # cached
+# Target: src/main.cmx, tags: { compile, extension:cmx, extension:ml, file:src/main.cmx, file:src/main.ml, implem, native, ocaml, quiet }
+ocamlfind ocamlopt -c -I src -o src/main.cmx src/main.ml # cached
+# Target: src/main.native, tags: { dont_link_with, extension:native, file:src/main.native, link, native, ocaml, program, quiet }
+ocamlfind ocamlopt str.cmxa unix.cmxa -linkpkg src/Sudoku.cmx src/sat.cmx src/main.cmx -o src/main.native # cached
+# Compilation successful.

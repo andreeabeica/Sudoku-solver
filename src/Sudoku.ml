@@ -285,7 +285,7 @@ let filetolist f =
   in
   let n = in_channel_length ic 
   in
-  let s = Bytes.create n 
+  let s = String.create n 
   in
   let _ = really_input ic s 0 n 
   in

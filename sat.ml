@@ -34,7 +34,7 @@ module type Solver = sig
 
   (* Find a clause with exactly one literal *)
   (* A more elegant type would be form -> lit option *)
-  val get_forced_lit : form -> (lit * form) option
+  (*val get_forced_lit : form -> (lit * form) option*)
 
   (* Whether the given formula is trivially true (empty)
    * or trivially false (contains an empty disjunction *)
@@ -71,11 +71,16 @@ module S : Solver = struct
     List.filter (fun disj -> not (List.exists (fun l' -> l = l') disj)) delta
 
   (* Remove l everywhere it appears *)
-  let remove_lit l lits delta : form * (lit list) = 
+  let remove_lit l lits delta = 
     List.fold_left (fun acc disj ->
       let r = List.filter (fun l' -> l <> l') disj in
       match r with
-      | [l] -> fst acc, l::(snd acc)
+      | [(n,b)] -> 
+          (try
+            if (ValMap.find n lits) <> b then raise Exit
+            else acc
+          with Not_found -> 
+            (fst acc), (ValMap.add n b (snd acc)))
       | _ -> r::(fst acc), snd acc) ([],lits) delta
 
     (*List.map (fun disj -> List.filter (fun l' -> l <> l') disj) delta*)
@@ -90,12 +95,12 @@ module S : Solver = struct
     let delta' = remove_disj l delta in
     remove_lit (neg l) lits delta'
 
-  let get_forced_lit delta =
-    let rec aux acc = function
-      | [] -> None
-      | [l]::delta' -> Some (l, acc@delta')
-      | disj::delta' -> aux (disj::acc) delta'
-    in aux [] delta
+  (*let get_forced_lit delta =*)
+    (*let rec aux acc = function*)
+      (*| [] -> None*)
+      (*| [l]::delta' -> Some (l, acc@delta')*)
+      (*| disj::delta' -> aux (disj::acc) delta'*)
+    (*in aux [] delta*)
 
   (* Clean maximally:
     * 1) Repeatedly propagate constraints (BCP)
@@ -103,18 +108,18 @@ module S : Solver = struct
     *    Otherwise, stop *)
   let rec clean gamma l delta =
     let rec recursor gamma l lits delta = 
-      if false_in l gamma then
-        (gamma, [[]])
-      else
-        let delta', lits' = bcp l lits delta 
-        in assume (assign l gamma) delta' lits'
+      try
+      let delta', lits' = bcp l lits delta 
+      in assume (assign l gamma) delta' lits'
+      with Exit -> (gamma,[[]])
 
     and assume gamma delta lits =
-      match lits with
-      | l::ls -> recursor gamma l ls delta
-      | [] -> gamma, delta
+      try
+        let l = ValMap.min_binding lits in
+        recursor gamma l (ValMap.remove (fst l) lits) delta
+      with Not_found -> gamma, delta
 
-    in recursor gamma l [] delta
+    in recursor gamma l ValMap.empty delta
 
   let trivially_true = function [] -> true | _ -> false
 

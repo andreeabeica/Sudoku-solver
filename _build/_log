@@ -1,14 +1,14 @@
 ### Starting build.
-# Target: src/main.ml.depends, tags: { extension:ml, file:src/main.ml, ocaml, ocamldep, quiet }
-ocamlfind ocamldep -modules src/main.ml > src/main.ml.depends
-# Target: src/sat.ml.depends, tags: { extension:ml, file:src/sat.ml, ocaml, ocamldep, quiet }
-ocamlfind ocamldep -modules src/sat.ml > src/sat.ml.depends
-# Target: src/Sudoku.ml.depends, tags: { extension:ml, file:src/Sudoku.ml, ocaml, ocamldep, quiet }
-ocamlfind ocamldep -modules src/Sudoku.ml > src/Sudoku.ml.depends
-# Target: src/Sudoku.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:src/Sudoku.cmo, file:src/Sudoku.ml, implem, ocaml, quiet }
-ocamlfind ocamlc -c -I src -o src/Sudoku.cmo src/Sudoku.ml
-+ ocamlfind ocamlc -c -I src -o src/Sudoku.cmo src/Sudoku.ml
-File "src/Sudoku.ml", line 288, characters 10-22:
+# Target: main.ml.depends, tags: { extension:ml, file:main.ml, ocaml, ocamldep, quiet }
+/usr/bin/ocamldep -modules main.ml > main.ml.depends
+# Target: sat.ml.depends, tags: { extension:ml, file:sat.ml, ocaml, ocamldep, quiet }
+/usr/bin/ocamldep -modules sat.ml > sat.ml.depends
+# Target: Sudoku.ml.depends, tags: { extension:ml, file:Sudoku.ml, ocaml, ocamldep, quiet }
+/usr/bin/ocamldep -modules Sudoku.ml > Sudoku.ml.depends
+# Target: Sudoku.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:Sudoku.cmo, file:Sudoku.ml, implem, ocaml, quiet }
+/usr/bin/ocamlc -c -o Sudoku.cmo Sudoku.ml
++ /usr/bin/ocamlc -c -o Sudoku.cmo Sudoku.ml
+File "Sudoku.ml", line 288, characters 10-22:
 Error: Unbound module Bytes
 Command exited with code 2.
 # Compilation unsuccessful.

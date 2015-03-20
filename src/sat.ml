@@ -38,7 +38,7 @@ module type Solver = sig
   val trivially_false : form -> bool
 
   (* Next undefined variable mentioned by the formula *)
-  val next_var : valu -> form -> int option
+  val next_var : form -> int option
 
   (* input/output *)
   val bindings : valu -> (int * bool) list
@@ -82,17 +82,7 @@ module S : Solver = struct
 
   let trivially_false = List.exists (function [] -> true | _ -> false)
 
-  let next_var gamma delta = 
-    let rec aux2 = function
-      | [] -> None
-      | (n,_)::disj -> if ValMap.mem n gamma then aux2 disj else Some n
-    and aux1 = function
-      | [] -> None
-      | disj::delta -> 
-        match aux2 disj with
-        | Some n -> Some n
-        | None -> aux1 delta
-    in aux1 delta
+  let next_var = function ((n,_)::_)::_ -> Some n | _ -> None
 
   let bindings = ValMap.bindings
   let to_form list = list
@@ -123,7 +113,7 @@ let rec solve' (gamma,delta) k =
   else if S.trivially_false delta then
     k ()
 
-  else match S.next_var gamma delta with
+  else match S.next_var delta with
   | None -> print_endline "error: no next var"; None
   | Some n ->
     let build l = clean gamma l delta in
